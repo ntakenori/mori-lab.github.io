@@ -1,10 +1,12 @@
 ---
 layout: default
-title: 数理学徒のための量子力学超入門
+title: 数理学徒のための量子力学入門
 ---
 
 量子力学について
 ================
+
+> And I'm not happy with all the analyses that go with just the classical theory, because nature isn't classical, dammit, and if you want to make a simulation of nature, you'd better make it quantum mechanical, and golly it's a wonderful problem because it doesn't look so easy. --- Richard P. Feynman 1982.
 
 はじめに
 ----------------
