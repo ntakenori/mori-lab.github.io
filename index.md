@@ -1,7 +1,6 @@
 ---
 layout: default
-title: 森立平 研究室
+title: 森 研究室 | 東工大 情報理工学院 数理・計算科学系
 ---
 
-# 量子情報
-
+<object data="qubit.svg" type="image/svg+xml" width="100%"></object>
