@@ -11,11 +11,11 @@
   </defs>
   <text x="10" y="55" font-family="Inconsolata, monospace" font-size="15">0</text>
   <text x="90" y="55" font-family="Inconsolata, monospace" font-size="15">1</text>
-  <line x1="22" y1="50" x2="87" y2="50" stroke-width="2" stroke="rgb(0,0,128)" stroke-linecap="round" />
+  <line x1="23" y1="50" x2="85" y2="50" stroke-width="2" stroke="rgb(0,0,128)" stroke-linecap="round" />
   <text x="40" y="115" font-family="Inconsolata, monospace" font-size="20" fill="rgb(0,0,128)">bit</text>
   <text x="170" y="115" font-family="Times, serif" font-size="20" fill="rgb(0,0,128)">qubit</text>
   <circle cx="190" cy="50" r="30" fill="url(#rgrad)"/>
-  <text x="142" y="55" font-family="Times, serif" font-size="15">0</text>
-  <text x="229" y="55" font-family="Times, serif" font-size="15">1</text>
+  <text x="144" y="55" font-family="Times, serif" font-size="15">0</text>
+  <text x="227" y="55" font-family="Times, serif" font-size="15">1</text>
 </svg>
 
