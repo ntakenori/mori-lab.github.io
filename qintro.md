@@ -3,7 +3,7 @@ layout: default
 title: 数理学徒のための量子力学入門
 ---
 
-量子力学について
+量子力学について(執筆中)
 ================
 
 > And I'm not happy with all the analyses that go with just the classical theory, because nature isn't classical, dammit, and if you want to make a simulation of nature, you'd better make it quantum mechanical, and golly it's a wonderful problem because it doesn't look so easy. --- Richard P. Feynman 1982.
@@ -70,7 +70,7 @@ No-signaling 条件
 マクロ局所性
 ----------------
 
-一般確率論から量子力学
+一般確率論から量子力学(執筆中)
 ================
 数理的なバックグラウンド(線形代数と確率論)がある人を対象に、天下り的な議論を最小限にして量子力学を導入する。
 
