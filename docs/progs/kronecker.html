@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>クロネッカー積で掛ける行列積の計算</title>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<style>
+<!--
+  body { width:1000px; margin-left: auto; margin-right: auto; }
+-->
+</style>
+</head>
+<body>
+<header>
+</header>
+<main>
+<section>
+<h1>このページについて</h1>
+クロネッカー羃で書ける行列の作用の計算について、明示的に書かれた文書があまりなく、またゼータ変換をこの方法で説明している文書も見たことがない。
+一般的な数理であるし、実用や競技プログラミングなど幅広く使われる計算でもあることから多くの人に有用であると思われたので、気軽に読めるところに書き記しておくことにした。
+読者としては大学2年生以上を想定している(基本的な線形代数と簡単なアルゴリズム、プログラミングが分かればよい)。
+
+<h1>クロネッカー積とクロネッカー羃</h1>
+$n\times m$ 行列 $A$ と任意のサイズの行列 $B$ のクロネッカー積を
+$$
+A\otimes B :=
+\begin{bmatrix}
+A_{11}B&A_{12}B&\dotsb&A_{1m}B\\
+\vdots&\vdots&\dotsb&\vdots\\
+A_{n1}B&A_{n2}B&\dotsb&A_{nm}B\\
+\end{bmatrix}
+$$
+と定義する。また、$A^{\otimes n} := \underbrace{A\otimes \dotsm \otimes A}_{n \text{ times}}$と定義する。
+
+<h2>クロネッカー羃行列の例</h2>
+$2\times2$ 行列
+$$
+G =
+\begin{bmatrix}
+a & b\\
+c & d
+\end{bmatrix}
+$$
+について $G^{\otimes n}$ を $2^n$ 次元ベクトル $x$ に掛ける計算はしばしば必要になる(体はなんでもよい)。
+特に
+$$
+G =
+\begin{bmatrix}
+1 & 1\\
+1 & -1
+\end{bmatrix}
+,\,
+\begin{bmatrix}
+1 & 0\\
+1 & 1
+\end{bmatrix}
+,\,
+\begin{bmatrix}
+1 & 0\\
+-1 & 1
+\end{bmatrix}
+\text{ on } \mathbb{R}
+$$
+の場合はそれぞれ、アダマール変換、ゼータ変換、メビウス変換(逆ゼータ変換)と呼ばれる。
+また、
+$$
+G =
+\begin{bmatrix}
+1 & 0\\
+1 & 1
+\end{bmatrix}
+\text{ on } \mathbb{F}_2
+$$
+の場合は(適切に行を選択することにより) Reed-Muller 符号及び polar 符号の符号化に対応する。
+
+<h2>クロネッカー羃行列の作用</h2>
+
+クロネッカー羃行列 $G^{\otimes n}$ を $2^n$ 次元ベクトル $x$ に掛ける計算について考える(体はなんでもよい。可換半環でもよい)。
+行列の簡単な分解により次の表現が得られる
+\begin{align}
+G^{\otimes n} &=
+\begin{bmatrix}
+a G^{\otimes n-1}&
+b G^{\otimes n-1}\\
+c G^{\otimes n-1}&
+d G^{\otimes n-1}
+\end{bmatrix}\\
+&=
+\begin{bmatrix}
+a I_{n-1}&
+b I_{n-1}\\
+c I_{n-1}&
+d I_{n-1}
+\end{bmatrix}
+\begin{bmatrix}
+G^{\otimes n-1}& 0\\
+0& G^{\otimes n-1}
+\end{bmatrix}.
+\end{align}
+ここで $I_n$ は $2^n\times 2^n$ 単位行列である。
+この分解に基づいた分割統治法の計算量は $O(N\log N)$ となる($N:=2^n$)。
+簡単なCプログラムの例を記す。
+
+<pre>
+<code>
+void kronecker(int n, double *x, double a, double b, double c, double d){
+  int i, h;
+  if(n == 0) return;
+  h = 1 &lt;&lt; (n - 1);
+  kronecker(n - 1, x, a, b, c, d);
+  kronecker(n - 1, x + h, a, b, c, d);
+  for(i = 0; i &lt; h; i++){
+    double s, t;
+    s = a * x[i] + b * x[i + h];
+    t = c * x[i] + d * x[i + h];
+    x[i] = s;
+    x[i + h] = t;
+  }
+}
+</code>
+</pre>
+また、2つの行列
+$\begin{bmatrix}
+G^{\otimes n-1}& 0\\
+0& G^{\otimes n-1}
+\end{bmatrix}$
+と
+$\begin{bmatrix}
+a I_{n-1}&
+b I_{n-1}\\
+c I_{n-1}&
+d I_{n-1}
+\end{bmatrix}$
+は可換なので、2回の再帰呼出をforループの後にしてもよい。
+
+<h2>バタフライ演算</h2>
+計算の構造を理解することで再帰を二重ループで書き直すことができる。
+関数呼出のコストを省くことができるので多くの場合高速化される。
+前節のアルゴリズムの構造は次の図ようになっている(計算の流れは左から右)。
+
+<div>
+<svg width="400" height="300">
+  <line x1="0" y1="30" x2="50" y2="30" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="50" x2="50" y2="50" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="70" x2="50" y2="70" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="90" x2="50" y2="90" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="170" x2="50" y2="170" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="190" x2="50" y2="190" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="210" x2="50" y2="210" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="230" x2="50" y2="230" stroke-width="4" stroke="black"/>
+  <rect x="50" y="10" width="200" height="100" fill="white" stroke="black" stroke-width="4" />
+  <rect x="50" y="150" width="200" height="100" fill="white" stroke="black" stroke-width="4" />
+  <text x="120" y="70" font-size="30"> <tspan>G<tspan dy="10">n-1</tspan></tspan></text>
+  <text x="120" y="210" font-size="30"> <tspan>G<tspan dy="10">n-1</tspan></tspan></text>
+  <line x1="250" y1="30" x2="400" y2="30" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="50" x2="400" y2="50" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="70" x2="400" y2="70" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="90" x2="400" y2="90" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="170" x2="400" y2="170" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="190" x2="400" y2="190" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="210" x2="400" y2="210" stroke-width="4" stroke="black"/>
+  <line x1="250" y1="230" x2="400" y2="230" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="30" x2="370" y2="170" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="170" x2="370" y2="30" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="50" x2="370" y2="190" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="190" x2="370" y2="50" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="70" x2="370" y2="210" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="210" x2="370" y2="70" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="90" x2="370" y2="230" stroke-width="4" stroke="black"/>
+  <line x1="280" y1="230" x2="370" y2="90" stroke-width="4" stroke="black"/>
+  <circle cx="280" cy="30" r="5" />  <circle cx="370" cy="30" r="5" />
+  <circle cx="280" cy="50" r="5" />  <circle cx="370" cy="50" r="5" />
+  <circle cx="280" cy="70" r="5" />  <circle cx="370" cy="70" r="5" />
+  <circle cx="280" cy="90" r="5" />  <circle cx="370" cy="90" r="5" />
+  <circle cx="280" cy="170" r="5" />  <circle cx="370" cy="170" r="5" />
+  <circle cx="280" cy="190" r="5" />  <circle cx="370" cy="190" r="5" />
+  <circle cx="280" cy="210" r="5" />  <circle cx="370" cy="210" r="5" />
+  <circle cx="280" cy="230" r="5" />  <circle cx="370" cy="230" r="5" />
+</svg>
+</div>
+再帰的に展開すると、次のようになる。
+<div>
+<svg width="500" height="330">
+  <line x1="0" y1="40" x2="500" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="80" x2="500" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="120" x2="500" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="160" x2="500" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="200" x2="500" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="240" x2="500" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="280" x2="500" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="320" x2="500" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="40" y1="40" x2="140" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="80" x2="140" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="120" x2="140" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="160" x2="140" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="200" x2="140" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="240" x2="140" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="280" x2="140" y2="320" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="320" x2="140" y2="280" stroke-width="4" stroke="black"/>
+
+  <line x1="200" y1="40" x2="300" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="120" x2="300" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="80" x2="300" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="160" x2="300" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="200" x2="300" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="280" x2="300" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="240" x2="300" y2="320" stroke-width="4" stroke="black"/>
+  <line x1="200" y1="320" x2="300" y2="240" stroke-width="4" stroke="black"/>
+
+  <line x1="360" y1="40" x2="460" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="200" x2="460" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="80" x2="460" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="240" x2="460" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="120" x2="460" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="280" x2="460" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="160" x2="460" y2="320" stroke-width="4" stroke="black"/>
+  <line x1="360" y1="320" x2="460" y2="160" stroke-width="4" stroke="black"/>
+  <circle cx="45" cy="40" r="5" />
+  <circle cx="45" cy="80" r="5" />
+  <circle cx="45" cy="120" r="5" />
+  <circle cx="45" cy="160" r="5" />
+  <circle cx="45" cy="200" r="5" />
+  <circle cx="45" cy="240" r="5" />
+  <circle cx="45" cy="280" r="5" />
+  <circle cx="45" cy="320" r="5" />
+  <circle cx="135" cy="40" r="5" />
+  <circle cx="135" cy="80" r="5" />
+  <circle cx="135" cy="120" r="5" />
+  <circle cx="135" cy="160" r="5" />
+  <circle cx="135" cy="200" r="5" />
+  <circle cx="135" cy="240" r="5" />
+  <circle cx="135" cy="280" r="5" />
+  <circle cx="135" cy="320" r="5" />
+  <circle cx="202" cy="40" r="5" />
+  <circle cx="202" cy="80" r="5" />
+  <circle cx="202" cy="120" r="5" />
+  <circle cx="202" cy="160" r="5" />
+  <circle cx="202" cy="200" r="5" />
+  <circle cx="202" cy="240" r="5" />
+  <circle cx="202" cy="280" r="5" />
+  <circle cx="202" cy="320" r="5" />
+  <circle cx="298" cy="40" r="5" />
+  <circle cx="298" cy="80" r="5" />
+  <circle cx="298" cy="120" r="5" />
+  <circle cx="298" cy="160" r="5" />
+  <circle cx="298" cy="200" r="5" />
+  <circle cx="298" cy="240" r="5" />
+  <circle cx="298" cy="280" r="5" />
+  <circle cx="298" cy="320" r="5" />
+  <circle cx="360" cy="40" r="5" />
+  <circle cx="360" cy="80" r="5" />
+  <circle cx="360" cy="120" r="5" />
+  <circle cx="360" cy="160" r="5" />
+  <circle cx="360" cy="200" r="5" />
+  <circle cx="360" cy="240" r="5" />
+  <circle cx="360" cy="280" r="5" />
+  <circle cx="360" cy="320" r="5" />
+  <circle cx="460" cy="40" r="5" />
+  <circle cx="460" cy="80" r="5" />
+  <circle cx="460" cy="120" r="5" />
+  <circle cx="460" cy="160" r="5" />
+  <circle cx="460" cy="200" r="5" />
+  <circle cx="460" cy="240" r="5" />
+  <circle cx="460" cy="280" r="5" />
+  <circle cx="460" cy="320" r="5" />
+</svg>
+</div>
+このグラフで表現される計算のことをバタフライ演算と呼ぶ。
+この図の中でXの左上にあたるインデックスは一段目は偶数(=最下位ビットが0)、二段目は下から二番目のビットが0、三段目は前半(=最上位ビットが0)である。
+またその計算の相手のインデックスは、その0となっているビットを1に反転したものである。
+再帰ではなく二重ループを用いた簡単なCプログラムの例を示す。
+
+<pre>
+<code>
+void kronecker(int n, double *x, double a, double b, double c, double d){
+  int i, j;
+  const int m = 1 &lt;&lt; n;
+  
+  for(j = 1; j &lt; m; j &lt;&lt;= 1){
+    for(i = 0; i &lt; m; i++){
+      if((i & j) == 0){
+        double s, t;
+        s = a * x[i] + b * x[i + j];
+        t = c * x[i] + d * x[i + j];
+        x[i] = s;
+        x[i + j] = t;
+      }
+    }
+  }
+}
+</code>
+</pre>
+ここで <code>i + j</code> は <code>i | j</code> や <code>i ^ j</code> でも構わない。
+前節と同様、
+$\begin{bmatrix}
+G^{\otimes n-1}& 0\\
+0& G^{\otimes n-1}
+\end{bmatrix}$
+と
+$\begin{bmatrix}
+a I_{n-1}&
+b I_{n-1}\\
+c I_{n-1}&
+d I_{n-1}
+\end{bmatrix}$
+を掛ける順番を逆にしてもよいので、<code>j</code> を <code>m/2</code> から <code>1</code> まで逆順に計算してもよい。
+また実際には <code>j</code> の値は <code>1</code> から <code>m/2</code> まで1回づつであれば任意の順番で計算してもよい。
+このことは線形代数的には
+$G\otimes I_2\otimes\dotsm\otimes I_2,\; I_2\otimes G\otimes I_2\otimes\dotsm\otimes I_2,\;\dotsc, I_2\otimes\dotsm\otimes I_2\otimes G$
+は互いに可換であるという事実に他ならない(次節に簡単な説明がある)。
+
+もちろんこれらの計算アルゴリズムは $2\times 2$ と限らない一般の行列 $G$ に対しても一般化できる(ただし $G$ のサイズが2羃でないと、インデックスの2進数表現を用いた効率化はできなくなる)。
+これらのアルゴリズムは Yates のアルゴリズムと呼ばれることがある。
+
+2重ループによる実装は再帰による実装より大抵高速であるが、入力サイズが大きい場合にはキャッシュに収まるように小さなサイズに分解して計算した方がより高速になる。
+また、深さが $\log N$ の計算なので、並列計算に大変適している。
+
+<h2>Out-of-place アルゴリズム</h2>
+前節までのアルゴリズムは作業用のメモリ領域を必要としない in-place アルゴリズムであったが、
+比較的小さいサイズの変換については、変換する配列と同じサイズの配列を計算の一時領域として利用する out-of-place アルゴリズムの方が高速である。
+前節のアルゴリズムでは各段毎にインデックスの異なるビットに注目して計算していたが、
+一段づつに置換を入れることで常に前半と後半の計算にするようにできる。
+<div>
+<svg width="850" height="330">
+  <line x1="0" y1="40" x2="180" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="80" x2="180" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="120" x2="180" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="160" x2="180" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="200" x2="180" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="240" x2="180" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="280" x2="180" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="0" y1="320" x2="180" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="180" y1="40" x2="260" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="80" x2="260" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="120" x2="260" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="160" x2="260" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="200" x2="260" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="240" x2="260" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="280" x2="260" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="180" y1="320" x2="260" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="260" y1="40" x2="440" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="80" x2="440" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="120" x2="440" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="160" x2="440" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="200" x2="440" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="240" x2="440" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="280" x2="440" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="260" y1="320" x2="440" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="440" y1="40" x2="520" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="80" x2="520" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="120" x2="520" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="160" x2="520" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="200" x2="520" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="240" x2="520" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="280" x2="520" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="440" y1="320" x2="520" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="520" y1="40" x2="700" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="80" x2="700" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="120" x2="700" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="160" x2="700" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="200" x2="700" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="240" x2="700" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="280" x2="700" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="520" y1="320" x2="700" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="700" y1="40" x2="780" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="80" x2="780" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="120" x2="780" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="160" x2="780" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="200" x2="780" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="240" x2="780" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="280" x2="780" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="700" y1="320" x2="780" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="40" y1="40" x2="140" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="200" x2="140" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="240" x2="140" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="80" x2="140" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="280" x2="140" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="120" x2="140" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="320" x2="140" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="40" y1="160" x2="140" y2="320" stroke-width="4" stroke="black"/>
+
+  <line x1="300" y1="40" x2="400" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="200" x2="400" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="240" x2="400" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="80" x2="400" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="120" x2="400" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="280" x2="400" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="160" x2="400" y2="320" stroke-width="4" stroke="black"/>
+  <line x1="300" y1="320" x2="400" y2="160" stroke-width="4" stroke="black"/>
+
+  <line x1="560" y1="40" x2="660" y2="200" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="200" x2="660" y2="40" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="80" x2="660" y2="240" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="240" x2="660" y2="80" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="120" x2="660" y2="280" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="280" x2="660" y2="120" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="160" x2="660" y2="320" stroke-width="4" stroke="black" stroke-linecap="round"/>
+  <line x1="560" y1="320" x2="660" y2="160" stroke-width="4" stroke="black" stroke-linecap="round"/>
+
+  <line x1="780" y1="40" x2="820" y2="40" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="80" x2="820" y2="80" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="120" x2="820" y2="120" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="160" x2="820" y2="160" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="200" x2="820" y2="200" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="240" x2="820" y2="240" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="280" x2="820" y2="280" stroke-width="4" stroke="black"/>
+  <line x1="780" y1="320" x2="820" y2="320" stroke-width="4" stroke="black"/>
+
+  <circle cx="40" cy="40" r="5" />
+  <circle cx="40" cy="80" r="5" />
+  <circle cx="40" cy="120" r="5" />
+  <circle cx="40" cy="160" r="5" />
+  <circle cx="40" cy="200" r="5" />
+  <circle cx="40" cy="240" r="5" />
+  <circle cx="40" cy="280" r="5" />
+  <circle cx="40" cy="320" r="5" />
+  <circle cx="140" cy="40" r="5" />
+  <circle cx="140" cy="80" r="5" />
+  <circle cx="140" cy="120" r="5" />
+  <circle cx="140" cy="160" r="5" />
+  <circle cx="140" cy="200" r="5" />
+  <circle cx="140" cy="240" r="5" />
+  <circle cx="140" cy="280" r="5" />
+  <circle cx="140" cy="320" r="5" />
+
+
+  <circle cx="300" cy="40" r="5" />
+  <circle cx="300" cy="80" r="5" />
+  <circle cx="300" cy="120" r="5" />
+  <circle cx="300" cy="160" r="5" />
+  <circle cx="300" cy="200" r="5" />
+  <circle cx="300" cy="240" r="5" />
+  <circle cx="300" cy="280" r="5" />
+  <circle cx="300" cy="320" r="5" />
+  <circle cx="400" cy="40" r="5" />
+  <circle cx="400" cy="80" r="5" />
+  <circle cx="400" cy="120" r="5" />
+  <circle cx="400" cy="160" r="5" />
+  <circle cx="400" cy="200" r="5" />
+  <circle cx="400" cy="240" r="5" />
+  <circle cx="400" cy="280" r="5" />
+  <circle cx="400" cy="320" r="5" />
+
+  <circle cx="560" cy="40" r="5" />
+  <circle cx="560" cy="80" r="5" />
+  <circle cx="560" cy="120" r="5" />
+  <circle cx="560" cy="160" r="5" />
+  <circle cx="560" cy="200" r="5" />
+  <circle cx="560" cy="240" r="5" />
+  <circle cx="560" cy="280" r="5" />
+  <circle cx="560" cy="320" r="5" />
+  <circle cx="660" cy="40" r="5" />
+  <circle cx="660" cy="80" r="5" />
+  <circle cx="660" cy="120" r="5" />
+  <circle cx="660" cy="160" r="5" />
+  <circle cx="660" cy="200" r="5" />
+  <circle cx="660" cy="240" r="5" />
+  <circle cx="660" cy="280" r="5" />
+  <circle cx="660" cy="320" r="5" />
+</svg>
+</div>
+前節のアルゴリズムが各ステージでインデックスの異なるビットを見ていたのに対して、このアルゴリズムでは常に最上位ビットを見る代わりに、各ステージでインデックスを左に巡回シフトしている。
+この置換を in-place で行うのは難しいので、同じサイズの配列をもう一つ用意して交互に代入していく out-of-place アルゴリズムを考える。
+Cプログラムの例を示す。
+<pre>
+<code>
+void kronecker(int n, double * restrict x, double * restrict y, double a, double b, double c, double d){
+  int i, j;
+  double *p = x;
+  double *q = y;
+  const int h = 1 &lt;&lt; (n - 1);
+
+  for(j = 0; j &lt; n; j++){
+    double *tmp;
+    for(i = 0; i &lt; h; i++){
+      q[i &lt;&lt; 1]       = a * p[i] + b * p[i + h];
+      q[(i &lt;&lt; 1) | 1] = c * p[i] - d * p[i + h];
+    }
+    tmp = p; p = q; q = tmp;
+  }
+
+  if(n & 1) memcpy(q, p, sizeof(double) &lt;&lt; n);
+}
+</code>
+</pre>
+
+ここで x は入力ベクトル、 y は作業用配列とし、計算結果は x に保存される。
+配列のサイズが小さいときには前節のアルゴリズムよりも高速になる。
+配列のサイズが大きい場合は(私の環境では $n\ge 20$)キャッシュミスの影響で遅くなる。
+また、out-of-place アルゴリズムは GPU 計算などの並列処理にも向いている。
+
+In-place, out-of-place アルゴリズムは SIMD 命令を適用することが容易である。
+型が int のアダマール変換($a=b=c=1,\,d=-1$)に AVX2 命令を用いた例を示す(簡単のため $n\ge 4$ を仮定している)。
+
+<pre>
+<code>
+void Hadamard_SIMD(int n, int * restrict x, int * restrict y){
+  int i, j;
+  const int h = 1 &lt;&lt; (n - 4);
+  __m256i *p = (__m256i *) x;
+  __m256i *q = (__m256i *) y;
+
+  for(j = 0; j &lt; n; j++){
+    __m256i *tmp;
+    for(i = 0; i &lt; h; i++){
+      __m256i l = _mm256_load_si256(p + i);
+      __m256i r = _mm256_load_si256(p + i + h);
+      __m256i s = _mm256_add_epi32(l, r);
+      __m256i t = _mm256_sub_epi32(l, r);
+      __m256i u = _mm256_unpacklo_epi32(s, t);
+      __m256i v = _mm256_unpackhi_epi32(s, t);
+      __m128i v0 = _mm256_extracti128_si256(v, 0);
+      __m128i u1 = _mm256_extracti128_si256(u, 1);
+      _mm256_store_si256(q + (i &lt;&lt; 1),     _mm256_inserti128_si256(u, v0, 1));
+      _mm256_store_si256(q + (i &lt;&lt; 1) + 1, _mm256_inserti128_si256(v, u1, 0));
+    }
+    tmp = p; p = q; q = tmp;
+  }
+
+  if(n & 1) memcpy(q, p, sizeof(int) &lt;&lt; n);
+}
+</code>
+</pre>
+
+ここで x は入力ベクトル、 y は作業用配列とし、共に 32 バイトにアライメントされているとする。
+コンパイラによっては実際に生成されるコードがプログラム内のAVX2命令とは少し違う場合がある(Clang でコンパイルすると u の上位ビットを v の下位ビットに埋め込むところで vperm2i128 を使っている)。
+サイズが小さいところでは非SIMD のプログラムの5倍以上速いのだが、サイズが大きくなると徐々に非SIMD との差は縮まっていく。
+この速度低下の原因はキャッシュミスにあるものと考えられる。
+私の環境では $n\ge 19$ で in-place アルゴリズムを SIMD 化したものが上記のプログラムより速くなった。
+
+
+また、このアルゴリズムとは逆に常に隣と計算するように変形することもできるが、
+そちらは FPGA など特定の用途を除き特にメリットはない。
+
+
+<h2>クロネッカー積のいくつかの性質</h2>
+$G^{\otimes n}$ は $2^n\times 2^n$ 行列であるが、行と列のインデックスを 0 から $2^n-1$ として、さらにその二進数表現 $\{0,1\}^n$ で表現することにする。
+任意の $x, y\in\{0,1\}^n$ について $G$ の $(x, y)$ 成分は $\prod_{i=1}^n G_{x_i, y_i}$ である(帰納法で簡単に示せる)。
+結合法則 $(A\otimes B) \otimes C = A\otimes(B\otimes C)$ が成り立つ。
+また $(A,C)$ と $(B,D)$ をそれぞれ同じサイズの行列のペアとすると
+$$
+(A\otimes B)(C\otimes D) = AC\otimes BD
+$$
+が成り立つ。
+このことは
+$$
+A\otimes B :=
+\begin{bmatrix}
+A_{11}I&A_{12}I&\dotsb&A_{1m}I\\
+\vdots&\vdots&\dotsb&\vdots\\
+A_{n1}I&A_{n2}I&\dotsb&A_{nm}I\\
+\end{bmatrix}
+\begin{bmatrix}
+B&0&\dotsb&0\\
+0&B&\dotsb&0\\
+\vdots&\vdots&\ddots&\vdots\\
+0&0&\dotsb&B
+\end{bmatrix}
+$$
+という分解とこの二つの行列の可換性から簡単に確認できる。
+よって
+$$
+(A\otimes B)^{-1} = A^{-1} \otimes B^{-1}
+$$
+が成り立つ。
+$$
+G = \begin{bmatrix}
+1&1\\
+1&-1
+\end{bmatrix}
+$$
+の場合、
+$$
+G^{-1} = \frac12\begin{bmatrix}
+1&1\\
+1&-1
+\end{bmatrix}
+=\frac12 G
+$$
+なので $G^{\otimes n}$ で変換した後もう一度、$G^{\otimes n}$ で変換し、$2^n$ で割ると元のベクトルに戻る。
+また、
+$$
+G = \begin{bmatrix}
+1&0\\
+1&1
+\end{bmatrix}
+$$
+の場合、
+$$
+G^{-1} = \begin{bmatrix}
+1&0\\
+-1&1
+\end{bmatrix}
+$$
+である。
+
+<h2>アダマール変換、ゼータ/メビウス変換について</h2>
+<h3>アダマール変換について</h3>
+$$
+G = \begin{bmatrix}
+1&1\\
+1&-1
+\end{bmatrix}
+$$
+のとき、$G^{\otimes n}$ をアダマール変換と呼ぶ。
+アダマール変換の利用例として $(\mathbb{Z}/2\mathbb{Z})^n$ 上の関数の畳み込み演算がある。
+以下一例を示す。
+
+$\{0,1\}^n$ 上の確率変数 $X$ と $Y$ について $X\oplus Y$ の確率質量関数 $p_{X\oplus Y}$ は $X$ と $Y$ の確率質量関数 $p_X$ と $p_Y$ を使って
+$$
+p_{X\oplus Y}(u) = \sum_{v\in\{0,1\}^n} p_X(v) p_Y(u\oplus v)
+$$
+と書ける。この右辺の演算のことを $p_X$ と $p_Y$ の畳み込み演算と呼び、$p_X\star p_Y$ と書くことにする。
+この畳み込み演算を定義通り計算すると、$O(N^2)$ の計算時間が必要となる。
+
+一方、関数 $f\colon\{0,1\}^n\to\mathbb{R}$ のフーリエ変換を
+$$
+\widehat{f}(y) = \frac1{2^n}\sum_{x\in\{0,1\}^n} f(x) \prod_{i=1}^n (-1)^{x_iy_i}
+$$
+と定義する。
+これは関数 $f$ と $\widehat{f}$ をベクトルとみなした場合のアダマール変換に他ならない($G^{\otimes n}$ の $(x, y)$ 成分は $\prod_{i=1}^n G_{x_i,y_i}$ となることに注意せよ)。
+このアダマール変換(関数のフーリエ変換)は畳み込み定理
+$$
+\widehat{g\star h}(y) = \widehat{g\,}(y) \widehat{h}(y)
+$$
+を満す(定義に従って計算すれば簡単に確認できる)。
+よって関数の畳み込み $g\star h$ を計算するためには $\widehat{g\,}$ と $\widehat{h}$ を計算し、各成分ごとに積をとり、もう一度アダマール変換すればよい。
+全体の計算量は $O(N\log N)$ と改善される。
+
+<h3>ゼータ/メビウス変換について</h3>
+集合関数 $g, h\colon 2^{\{1,2,\dotsc,n\}} \to \mathbb{R}$ の被覆積を
+$$
+(g\star h)(S) := \sum_{\substack{U, V\subseteq\{1,2,\dotsc,n\}\\ U\cup V = S}} g(U) h(V)
+$$
+と定義する。
+また、集合関数のゼータ変換を
+$$
+\widehat{f}(T) := \sum_{S\subseteq T} f(S)
+$$
+と定義する。
+メビウス変換
+$$
+f(S) := \sum_{T\subseteq S} \widehat{f}(T)(-1)^{|S\setminus T|}
+$$
+で元の関数に戻すことができる。
+集合を$\{0,1\}$ベクトルで表現するとゼータ変換は次のように表現できる
+$$
+\widehat{f}(y) := \sum_{x\in\{0,1\}^n} f(x)\prod_{i=1}^n \mathbb{I}\{x_i\le y_i\}.
+$$
+ここで $\mathbb{I}\{\cdot\}$ は指示関数である($\mathbb{I}\{p\}$ は $p$ という条件が満されていれば 1, そうでなければ 0 という値を取る)。
+これは関数 $f$ と $\widehat{f}$ をベクトルとみなした場合のゼータ変換に他ならない(メビウス変換も同様)。
+このゼータ変換は畳み込み定理
+$$
+\widehat{g\star h}(y) = \widehat{g\,}(y) \widehat{h}(y)
+$$
+を満す(定義に従って計算すれば簡単に確認できる)。
+このことを用いれば被覆積を $O(N\log N)$ 時間で計算できる。
+グラフ $G=(V,E)$ が $k$ 色で彩色できることと $k$ 個の独立点集合で頂点全体を被覆できることは同値であるので、
+$G$ の頂点部分集合上の集合関数 $f\colon 2^V\to\mathbb{R}$ を
+$$
+f(S):=
+\begin{cases}
+1,& \text{$S$ が $G$ の独立点集合}\\
+0,& \text{それ以外}
+\end{cases}
+$$
+と定義すると、
+$$
+\text{$G$ が $k$ 色で彩色できる} \Longleftrightarrow
+(\underbrace{f\star f\star\dotsm\star f}_{\text{$k$ times}})(V) \ge 1
+$$
+が成立する。
+よって $O(2^n\mathrm{poly}(n))$ 時間で $k$ 彩色性が判定できる($n$ はグラフ $G$ の頂点数)。
+たったこれだけのことであるが、この事実は2006年に明らかになった<sup><a href="#fn-chromatic" id="r-chromatic">[1]</a></sup>。
+
+<h3>離散フーリエ変換について</h3>
+クロネッカー積の形で書くことはできないが、バタフライ演算で計算ができる重要な例として離散フーリエ変換がある。
+</section>
+<section>
+<h2>脚注</h2>
+<p id="fn-chromatic"><a href="#r-chromatic">[1]</a>
+<cite>A. Bj&ouml;rklund and T. Husfeldt, &ldquo;Inclusion&ndash;Exclusion Algorithms for Counting Set Partitions,&rdquo; 2006 47th Annual IEEE Symposium on Foundations of Computer Science (FOCS'06), Berkeley, CA, 2006, pp. 575&ndash;582.
+DOI: <a href="https://doi.org/10.1109/FOCS.2006.41">10.1109/FOCS.2006.41</a>
+</cite>
+ジャーナル版は
+<cite>
+A. Bj&ouml;rklund, T. Husfeldt, and M. Koivisto
+&ldquo;Set Partitioning via Inclusion&ndash;Exclusion,&rdquo;
+SIAM Journal on Computing 2009 39:2, 546&ndash;563.
+DOI: <a href="https://doi.org/10.1137/070683933">10.1137/070683933</a>
+</cite>
+</section>
+</main>
+<footer>
+<small>&copy; 2017 Ryuhei Mori</small> このページについての連絡は email: mori[at]c.titech.ac.jp
+</footer>
+</body>
+</html>

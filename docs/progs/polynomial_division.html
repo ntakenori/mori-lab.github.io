@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>多項式剰余</title>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<style>
+<!--
+  body { width:1000px; margin-left: auto; margin-right: auto; }
+-->
+</style>
+</head>
+<body>
+<header>
+</header>
+<main>
+<section>
+<h1>はじめに</h1>
+線形漸化式の $n$ 項目の計算はフィボナッチ数列のように行列の累乗で計算すればよいが、$k+1$ 項間線形漸化式の場合に素朴には $O(k^3 \log n)$ 時間かかる。
+これを $O(k\log k \log n)$ に高速化する方法がある。多項式を用いることでとても簡単に理解できるので書き記しておく。
+私は <a href="https://discuss.codechef.com/questions/65993/rng-editorial">RNG - Editorial CodeChef Discussion</a> から以下のアルゴリズムを考えついた。
+通常はこのリンク先の記事の最後に書いてある手法が紹介されるが、それは多項式環上のモンゴメリ乗算など非直感的なテクニックを必要とする。
+ここで紹介するアルゴリズムは $k$ 次多項式の乗算が高速フーリエ変換で $O(k\log k)$ 時間で計算できることだけ分かっていれば理解できる。
+
+<h1>線形漸化式と母関数</h1>
+体 $\mathbb{F}$ 上の数列 $a_0,\,a_1,\,\dotsc,$ が $k+1$ 項間線形漸化式を満たすとは、ある $(c_i\in\mathbb{F})_{i=1,\dotsc,k}$ が存在して
+$$
+a_n = \sum_{i=1}^k c_i a_{n-i}
+$$
+が任意の $n\ge k$ について成り立つことを言う。
+線形漸化式の母関数は形式的冪級数として
+$$
+G(x) := \sum_{i\ge 0} a_i x^i
+$$
+と定義される。
+母関数 $G(x)$ に対して $Q(x) := 1-\sum_{i=1}^k c_i x^i$ を掛けると、$x^k$ 以上の項はすべて消えるので、高々 $k-1$ 次の多項式 $P(x)$ となる。
+よって
+$$
+G(x) = \frac{P(x)}{Q(x)}
+$$
+となる。また、逆に高々 $k-1$ 次の多項式 $P(x)$ と$k$ 次の多項式 $Q(x)$ が $Q(0)=1$ を満たし、$G(x) = P(x)/Q(x)$ となるとき、
+$G(x)$ が $k+1$ 項間線形漸化式の母関数となることは $G(x)Q(x)$ を考えることで簡単に確認できる。
+
+<h1>アルゴリズム</h1>
+$P(x)$ を高々 $k-1$ 次の多項式、$Q(x)$ を $k$ 次の多項式とし、$Q(0)=1$ と仮定する。今から
+$$
+[x^n] \frac{P(x)}{Q(x)}
+$$
+を計算することアルゴリズムを考えよう(形式的冪級数 $R(x)$ について $[x^n]R(x)$ は $R(x)$ の $x^n$ の係数である)。
+$$
+[x^n] \frac{P(x)}{Q(x)}
+=
+[x^n] \frac{P(x)Q(-x)}{Q(x)Q(-x)}
+$$
+ここで分母 $Q(x)Q(-x)$ は偶多項式である。よって、$1/(Q(x)Q(-x))$ も偶形式的冪級数となる。
+そのため、$n$ が偶数(または奇数)のときは、$P(x)Q(-x)$ の奇数次(または偶数次)の項は無視してよい。
+$\mathcal{E}(R(x))$(または$\mathcal{O}(R(x))$)を多項式 $R(x)$ の偶数次項(または奇数次項)からなる多項式と定義すると、
+次の漸化式が得られる。
+$$
+[x^n] \frac{P(x)}{Q(x)}
+=
+\begin{cases}
+[x^n] \frac{\mathcal{E}(P(x)Q(-x))}{Q(x)Q(-x)},&\text{if $n$ is even}\\
+[x^n] \frac{\mathcal{O}(P(x)Q(-x))}{Q(x)Q(-x)},&\text{otherwise}
+\end{cases}
+$$
+が成り立つ。
+よって $x^2$ を $x$ に置き換えることによって
+$$
+[x^n] \frac{P(x)}{Q(x)}
+=
+\begin{cases}
+[x^{\frac{n}{2}}] \frac{P_e'(x)}{Q'(x)},&\text{if $n$ is even}\\
+[x^{\frac{n-1}{2}}] \frac{P_o'(x)}{Q'(x)},&\text{otherwise}
+\end{cases}
+$$
+が得られる。
+ここで $P_e'(x^2) := \mathcal{E}(P(x)Q(-x))$, $P'_o(x^2) := \mathcal{O}(P(x)Q(-x))/x$, $Q'(x^2) := Q(x)Q(-x)$ である。
+多項式 $P'_e$, $P'_o$ は高々 $k-1$ 次であり、多項式 $Q'(x)$ は $k$ 次であり、$Q'(0)=1$ を満たす。
+また、$[x^0] \frac{P(x)}{Q(x)} = P(0)$ なので、上記の漸化式を $\lfloor \log n\rfloor+1$ 回繰り返せば解が得られる。
+一回の漸化式の適用に次数が高々 $k$ の多項式乗算を2回すればよい。これは高速フーリエ変換を使うと $O(k\log k)$ 時間でできる。
+よってアルゴリズムの時間計算量は $O(k\log k\log n)$ である。
+
+<h1>アルゴリズムの実装上の工夫</h1>
+時間間引き、周波数間引きの高速フーリエ変換の式を考慮することにより、
+漸化式の1回の適用の中で計算する高速フーリエ変換(計4回)のサイズを半分にできる。
+例えば <a href="https://www.codechef.com/viewsolution/19420541">このコード</a>。ただし、周波数領域ではビットリバーサル置換がかかっているので少し読み辛い。
+<!--
+関数 $f\colon\{0,1,\dotsc,N-1\}$ に対して
+関数 $g\colon\{0,1,\dotsc,N-1\}$ を
+$$
+g(x) =
+\begin{cases}
+f(x),&\text{if $x$ is even}\\
+-f(x),&\text{otherwise}
+\end{cases}
+$$
+とおくと、
+$\omega \in\{0,1,\dotsc,N/2-1\}$ について
+$$
+\begin{align*}
+\widehat{g}(\omega) &= \widehat{f}(\omega + N/2)\\
+\widehat{g}(\omega+N/2) &= \widehat{f}(\omega)
+\end{align*}
+$$
+が成り立つ。
+また、$f_e(x):=f(2x)$, $f_o(x):=f(2x+1)$ について、
+-->
+
+<h1>より一般の多項式剰余関連の問題</h1>
+同様の設定で
+$$
+\frac{P(x)}{Q(x)}
+$$
+の $n$ 次以下の係数をすべて計算する問題を考えることもできる<a href="#fn-partition" id="#r-partition">[1]</a>。
+上記のアルゴリズムと同様の手法で $O(n\log n)$ 時間で計算ができる。
+$Q_0(x) := Q(x)$ とおき、$Q_{i+1}(x^2) := Q_i(x)Q_i(-x)$ と定義する。すると、
+$$
+\frac{P(x)}{Q(x)}
+=\frac{P(x)Q_0(-x) Q_1(-x^2) Q_2(-x^4)\dotsm Q_t(-x^{2^t})}{Q_{t+1}(x^{2^{t+1}})}
+$$
+が成り立つ。ここで、$2^{t+1} > n$ であれば、分母を考慮する必要がないので、$n$ 次以下の項は分子の計算で得られる。多項式の乗算をしながら、高次の項を捨てていけばよい。
+素朴には$O(n(\log n)^2)$ 時間かかりそうだが、少し工夫すれば $O(n\log n)$ で計算できる<a href="#fn-partition" id="#r-partition">[1]</a>。
+また、別の手法として <a href="http://codeforces.com/blog/entry/12513">Codeforces Round #250 Editorial (438E)</a> もある。
+実際にどちらがより高速かは考慮する必要がある。
+</section>
+<section>
+<h2>脚注</h2>
+<p id="fn-partition"><a href="#r-partition">[1]</a>
+<cite>
+ Neil Calkin, Jimena Davis, Kevin James, Elizabeth Perez and Charles Swannack,
+&ldquo;Computing the Integer Partition Function,&rdquo;
+Mathematics of Computation, Vol. 76, No. 259 (Jul., 2007), pp. 1619&ndash;1638 
+<a href="https://www.jstor.org/stable/40234446">https://www.jstor.org/stable/40234446</a>.
+</cite>
+</section>
+</main>
+<hr/>
+<footer>
+<small>&copy; 2018 Ryuhei Mori</small> このページについての連絡は email: mori[at]c.titech.ac.jp
+</footer>
+</body>
+</html>
